@@ -7,7 +7,8 @@ Includes application forms, interactive chat, and real-time admin management.
 
 # 1. Clone the repo:
 git clone https://github.com/Abbi-not/school-landing-page-with-chatbot-.git
-cd school-connect-clean
+
+cd school-landing-page-with-chatbot-
 
 # 2. Install dependencies:
 
