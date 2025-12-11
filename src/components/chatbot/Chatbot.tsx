@@ -6,9 +6,15 @@ import { Input } from "@/components/ui/input";
 export const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<{ text: string; isUser: boolean }[]>([
-    { text: "Hello! I'm the Excellence Academy assistant. How can I help you today?", isUser: false },
+    {
+      text: "Hello! I'm the Excellence Academy assistant. How can I help you today?",
+      isUser: false,
+    },
   ]);
+
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -21,29 +27,41 @@ export const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
-    
-    setMessages((prev) => [...prev, { text: input, isUser: true }]);
+
+    const userText = input.trim();
+    setMessages((prev) => [...prev, { text: userText, isUser: true }]);
     setInput("");
     setIsTyping(true);
-    
-    // Placeholder response - backend will be added later
-    setTimeout(() => {
-      setIsTyping(false);
+
+    try {
+      const res = await fetch("http://localhost:5000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userText, sessionId }),
+      });
+
+      const data = await res.json();
+
+      // Save sessionId from backend if first message
+      if (!sessionId && data.sessionId) setSessionId(data.sessionId);
+
+      const botReply = data?.reply || "Sorry, I couldn't get a reply.";
+
+      setMessages((prev) => [...prev, { text: botReply, isUser: false }]);
+    } catch (err) {
+      console.error("Error:", err);
       setMessages((prev) => [
         ...prev,
-        { 
-          text: "Thank you for your question! Our team will integrate the AI backend soon. In the meantime, please contact us at info@excellenceacademy.edu for assistance.", 
-          isUser: false 
-        },
+        { text: "Network or server error. Please try again.", isUser: false },
       ]);
-    }, 1500);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
   const chatWindowClasses = isFullscreen
     ? "fixed inset-4 md:inset-8 w-auto h-auto"
@@ -64,15 +82,14 @@ export const Chatbot = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div 
+        <div
           className={`${chatWindowClasses} bg-background rounded-3xl shadow-2xl flex flex-col z-50 border border-border overflow-hidden animate-scale-in`}
         >
           {/* Header */}
           <div className="bg-primary text-primary-foreground p-5 flex items-center justify-between relative overflow-hidden">
-            {/* Background decoration */}
             <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-gold/20 blur-2xl" />
             <div className="absolute -left-10 -bottom-10 w-24 h-24 rounded-full bg-primary-foreground/10 blur-xl" />
-            
+
             <div className="flex items-center gap-4 relative z-10">
               <div className="w-12 h-12 rounded-2xl bg-gold/20 flex items-center justify-center">
                 <Bot className="w-6 h-6 text-gold" />
@@ -85,15 +102,21 @@ export const Chatbot = () => {
                 </div>
               </div>
             </div>
+
             <div className="flex items-center gap-1 relative z-10">
-              <button 
-                onClick={toggleFullscreen} 
+              <button
+                onClick={toggleFullscreen}
                 className="hover:bg-primary-foreground/10 p-2 rounded-xl transition-colors"
               >
                 {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
               </button>
-              <button 
-                onClick={() => { setIsOpen(false); setIsFullscreen(false); }} 
+
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsFullscreen(false);
+                  setSessionId(null); // reset session on close
+                }}
                 className="hover:bg-primary-foreground/10 p-2 rounded-xl transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -110,6 +133,7 @@ export const Chatbot = () => {
                     <Bot className="w-4 h-4 text-gold-dark" />
                   </div>
                 )}
+
                 <div
                   className={`max-w-[75%] p-4 text-sm leading-relaxed ${
                     msg.isUser
@@ -121,23 +145,30 @@ export const Chatbot = () => {
                 </div>
               </div>
             ))}
-            
+
             {/* Typing indicator */}
             {isTyping && (
               <div className="flex justify-start animate-fade-in">
                 <div className="w-8 h-8 rounded-xl bg-gold/10 flex items-center justify-center mr-3 shrink-0">
                   <Bot className="w-4 h-4 text-gold-dark" />
                 </div>
+
                 <div className="bg-background text-foreground rounded-2xl rounded-bl-md shadow-md border border-border/50 p-4">
                   <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" />
+                    <span
+                      className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
                   </div>
                 </div>
               </div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -147,9 +178,7 @@ export const Chatbot = () => {
               {["Admission requirements", "Tuition fees", "Programs offered"].map((action) => (
                 <button
                   key={action}
-                  onClick={() => {
-                    setInput(action);
-                  }}
+                  onClick={() => setInput(action)}
                   className="shrink-0 px-4 py-2 text-xs font-medium bg-muted hover:bg-muted/80 text-foreground rounded-full transition-colors"
                 >
                   {action}
@@ -164,20 +193,22 @@ export const Chatbot = () => {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
                 placeholder="Type your message..."
                 className="flex-1 h-12 bg-muted/30 border-border/50 rounded-xl focus-visible:ring-gold/50"
               />
-              <Button 
-                onClick={handleSend} 
-                size="icon" 
+
+              <Button
+                onClick={handleSend}
+                size="icon"
                 className="w-12 h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shrink-0"
               >
                 <Send className="w-5 h-5" />
               </Button>
             </div>
+
             <p className="text-xs text-center text-muted-foreground mt-3">
-              AI backend will be integrated later
+              Powered by AI — English & Amharic supported
             </p>
           </div>
         </div>
