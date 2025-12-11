@@ -30,4 +30,6 @@ npm run dev
 
 # 5. Start frontend:
 
+cd .. 
+
 npm run dev
