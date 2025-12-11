@@ -12,11 +12,14 @@ cd school-connect-clean
 # 2. Install dependencies:
 
 npm install
-cd backend && npm install
+cd backend
+
+npm install
 
 # 3. Add `.env` in `backend` with your OpenAI key:
 
 OPENAI_API_KEY=your_key_here
+
 PORT=5000
 
 # 4. Start backend:
